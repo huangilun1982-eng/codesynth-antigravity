@@ -16,6 +16,13 @@ codesynth_history.db
 
 # 執行環境
 _sim_temp/
+python_server/logs/
+
+# 暫存與備份
+*.bak
+*.cleanup_bak
+*.db-journal
+*.db-wal
 
 # 環境變數
 .env

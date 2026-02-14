@@ -28,8 +28,9 @@ app.include_router(snapshot.router, prefix="/api", tags=["Snapshot"])
 app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
 app.include_router(simulation.router, prefix="/api", tags=["Simulation"])
 app.include_router(health.router, prefix="/api", tags=["Health"])
-# AI router is mostly placeholder or internal logging for now
-# app.include_router(ai.router, prefix="/api", tags=["AI"])
+
+# AI & Memory OS Router
+app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 
 if __name__ == "__main__":
     print("==================================================")

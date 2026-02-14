@@ -8,8 +8,6 @@ def get_db(project_path):
     """
     db_path = os.path.join(project_path, "codesynth_history.db")
     conn = sqlite3.connect(db_path)
-    # 確保資料表存在
-    # 建立簡單的歷史表：哪個檔案、什麼時候、內容是什麼
     c = conn.cursor()
     
     # [Mod] Phase 5: Add status column
@@ -20,8 +18,10 @@ def get_db(project_path):
         # Column missing, add it
         try:
             c.execute("ALTER TABLE history ADD COLUMN status TEXT DEFAULT 'pending'")
-            print("[INFO] DB Schema Updated: Added 'status' column.")
-        except: pass
+            print("[INFO] DB Schema Updated: Added 'status' column.") # Keep print for migration info
+        except Exception as e:
+            # Dangerous pass removed
+            print(f"[WARNING] Failed to add status column: {e}")
 
     # [Mod] Feature Tag System: Add feature_tag column
     try:
@@ -31,7 +31,9 @@ def get_db(project_path):
         try:
             c.execute("ALTER TABLE history ADD COLUMN feature_tag TEXT")
             print("[INFO] DB Schema Updated: Added 'feature_tag' column.")
-        except: pass
+        except Exception as e:
+            # Dangerous pass removed
+            print(f"[WARNING] Failed to add feature_tag column: {e}")
 
     c.execute('''CREATE TABLE IF NOT EXISTS history
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 

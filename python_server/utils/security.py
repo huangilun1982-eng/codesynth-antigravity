@@ -45,4 +45,5 @@ def validate_file_path(file_path: str) -> str:
     if os.path.isabs(file_path):
         raise ValueError("非法檔案路徑：不允許絕對路徑")
     
-    return file_path
+    # Normalized: Windows -> lowercase & backslash
+    return os.path.normcase(file_path)

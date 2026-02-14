@@ -129,6 +129,12 @@ export class CockpitPanel {
             case 'get_ai_log':
                 await this.sendAIContext();
                 break;
+            case 'get_memory_status':
+                await this.sendMemoryStatus();
+                break;
+            case 'condense_memory':
+                await this.triggerCondenseMemory();
+                break;
         }
     }
 
@@ -145,6 +151,30 @@ export class CockpitPanel {
             });
         } catch (e) {
             console.error(e);
+        }
+    }
+
+    private async sendMemoryStatus() {
+        try {
+            const res = await axios.get('http://127.0.0.1:8000/api/ai/memory');
+            this._panel.webview.postMessage({
+                command: 'update_memory_status',
+                memory: res.data
+            });
+        } catch (e) {
+            console.error(e);
+            vscode.window.showErrorMessage(`讀取記憶失敗: ${e}`);
+        }
+    }
+
+    private async triggerCondenseMemory() {
+        try {
+            vscode.window.showInformationMessage('正在整理記憶...');
+            await axios.post('http://127.0.0.1:8000/api/ai/condense_memory');
+            vscode.window.showInformationMessage('記憶整理完成！');
+            await this.sendMemoryStatus(); // Refresh UI
+        } catch (e) {
+            vscode.window.showErrorMessage(`記憶整理失敗: ${e}`);
         }
     }
 

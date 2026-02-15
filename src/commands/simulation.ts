@@ -3,6 +3,8 @@ import axios from 'axios';
 import { CockpitPanel } from '../ui/cockpit_panel';
 
 export async function startSimulationCmd(context: vscode.ExtensionContext) {
+    vscode.window.showInformationMessage("CodeSynth: 正在啟動測試指令...");
+    console.log("[CodeSynth] startSimulationCmd triggered");
     const projectPath = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : "";
     if (!projectPath) {
         vscode.window.showErrorMessage("請先開啟一個資料夾！");
@@ -86,6 +88,13 @@ export async function startSimulationCmd(context: vscode.ExtensionContext) {
 
         // 根據執行結果顯示不同訊息
         if (result.status === 'success') {
+
+            // ⭐ 如果有回傳 app_url (例如 Streamlit)，直接打開瀏覽器
+            if (result.app_url) {
+                vscode.env.openExternal(vscode.Uri.parse(result.app_url));
+                vscode.window.showInformationMessage(`✅ 測試已啟動！正在瀏覽器開啟...`, { modal: false });
+            }
+
             const output = result.output || '(無輸出)';
             vscode.window.showInformationMessage(
                 `✅ 執行成功！\n\n版本: ${versionInfo}\n\n輸出:\n${output.substring(0, 200)}${output.length > 200 ? '...' : ''}`,
@@ -108,7 +117,7 @@ export async function startSimulationCmd(context: vscode.ExtensionContext) {
                 }
             });
         } else if (result.status === 'failed') {
-            vscode.window.showInformationMessage(`✅ 執行成功！\n\n${result.message || result.output}`, { modal: false });
+            vscode.window.showErrorMessage(`❌ 執行失敗！\n\n${result.message || result.output}`, { modal: false });
         } else {
             // 測試失敗/錯誤/超時
             const screenshot = result.screenshot;

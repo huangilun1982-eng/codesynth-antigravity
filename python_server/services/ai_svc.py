@@ -37,6 +37,6 @@ def log_ai_event(project_path, what_happened, current_status, **kwargs):
         
         conn.commit()
         conn.close()
-        print(f"📝 AI Log: {what_happened}")
+        print(f"[+] AI Log: {what_happened}")
     except Exception as e:
-        print(f"⚠️ AI Log 記錄失敗: {e}")
+        print(f"[!] AI Log 記錄失敗: {e}")

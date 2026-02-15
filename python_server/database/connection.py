@@ -77,5 +77,22 @@ def get_db(project_path):
                   ai_summary TEXT,
                   next_action TEXT)''')
     
+    # [Mod] Phase 7: Stage Versioning
+    # 表 5: stages (階段定義)
+    c.execute('''CREATE TABLE IF NOT EXISTS stages
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  name TEXT UNIQUE,
+                  description TEXT,
+                  created_at REAL)''')
+
+    # 表 6: stage_items (階段內容：Snapshot 組合)
+    c.execute('''CREATE TABLE IF NOT EXISTS stage_items
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  stage_id INTEGER,
+                  file_path TEXT,
+                  version_id INTEGER,
+                  FOREIGN KEY (stage_id) REFERENCES stages(id),
+                  FOREIGN KEY (version_id) REFERENCES history(id))''')
+
     conn.commit()
     return conn, db_path

@@ -176,4 +176,36 @@ export const COCKPIT_CSS = `
     .log-failed { border-left-color: var(--error-color); }
     
     .loading-spinner { text-align: center; color: #888; margin-top: 20px; font-style: italic; }
+
+    /* Stage Pills */
+    .stage-bar {
+        display: flex;
+        gap: 8px;
+        padding: 8px 10px;
+        background: #252526;
+        border-bottom: 1px solid var(--border-color);
+        overflow-x: auto;
+        white-space: nowrap;
+        align-items: center;
+    }
+    .stage-pill {
+        background: #333;
+        color: #aaa;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .stage-pill:hover { background: #444; color: #eee; }
+    .stage-pill.active { background: var(--accent-color); color: white; border-color: var(--accent-color); }
+    
+    .stage-locked {
+        background: rgba(14, 99, 156, 0.2) !important;
+        border-left: 2px solid var(--accent-color);
+    }
 `;

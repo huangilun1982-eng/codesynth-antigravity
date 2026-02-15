@@ -114,6 +114,9 @@ export class CockpitPanel {
             case 'scan_project':
                 await vscode.commands.executeCommand('codesynth.scanProject');
                 break;
+            case 'start_simulation':
+                await vscode.commands.executeCommand('codesynth.startSimulation');
+                break;
             case 'run_file':
                 await this.runFile(message.file_path);
                 break;
@@ -135,6 +138,24 @@ export class CockpitPanel {
             case 'condense_memory':
                 await this.triggerCondenseMemory();
                 break;
+            case 'create_stage':
+                await this.createStage(message.name, message.description);
+                break;
+            case 'get_stages':
+                await this.getStages();
+                break;
+            case 'get_stage_items':
+                await this.getStageItems(message.stage_id);
+                break;
+            case 'open_preview':
+                await vscode.commands.executeCommand('simpleBrowser.show', 'http://127.0.0.1:8000/preview/index.html');
+                break;
+            case 'get_skills':
+                await this.getSkills();
+                break;
+            case 'install_skill':
+                await this.installSkill(message.skill_id, message.params);
+                break;
         }
     }
 
@@ -147,7 +168,7 @@ export class CockpitPanel {
 
             this._panel.webview.postMessage({
                 command: 'update_ai_log',
-                logs: res.data.logs
+                logs: res.data.recent_logs
             });
         } catch (e) {
             console.error(e);
@@ -264,5 +285,97 @@ export class CockpitPanel {
             feature_tag: featureTag
         });
         await this.refresh();
+    }
+
+    private async createStage(name: string, description: string) {
+        try {
+            // Get current version selection
+            const items = [];
+            for (const [file, verId] of this.versionSelection.entries()) {
+                items.push({ file_path: file, version_id: verId });
+            }
+
+            if (items.length === 0) {
+                vscode.window.showWarningMessage('請至少選擇一個檔案版本來建立階段');
+                return;
+            }
+
+            const res = await axios.post('http://127.0.0.1:8000/api/stage/create', {
+                project_path: this._projectPath,
+                name: name,
+                description: description,
+                items: items
+            });
+
+            if (res.data.status === 'success') {
+                vscode.window.showInformationMessage(`階段 '${name}' 建立成功！`);
+                await this.getStages(); // Refresh list
+            } else {
+                vscode.window.showErrorMessage(`建立失敗: ${res.data.message}`);
+            }
+        } catch (e) {
+            vscode.window.showErrorMessage(`建立階段錯誤: ${e}`);
+        }
+    }
+
+    private async getStages() {
+        try {
+            const res = await axios.post('http://127.0.0.1:8000/api/stage/list', {
+                project_path: this._projectPath
+            });
+            this._panel.webview.postMessage({
+                command: 'update_stages',
+                stages: res.data.stages
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    private async getStageItems(stageId: number) {
+        try {
+            const res = await axios.post('http://127.0.0.1:8000/api/stage/items', {
+                project_path: this._projectPath,
+                stage_id: stageId
+            });
+            this._panel.webview.postMessage({
+                command: 'update_stage_items',
+                items: res.data.items
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    private async getSkills() {
+        try {
+            const res = await axios.get('http://127.0.0.1:8000/api/skill/list');
+            this._panel.webview.postMessage({
+                command: 'update_skills',
+                skills: res.data.skills
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    private async installSkill(skillId: string, params: any) {
+        try {
+            const res = await axios.post('http://127.0.0.1:8000/api/skill/install', {
+                project_path: this._projectPath,
+                skill_id: skillId,
+                params: params
+            });
+
+            if (res.data.status === 'success') {
+                vscode.window.showInformationMessage(`✅ ${res.data.message}`);
+                // Refresh to show changes if any
+                await this.refresh();
+            } else {
+                vscode.window.showErrorMessage(`❌ 安裝失敗: ${res.data.message}`);
+            }
+        } catch (e) {
+            vscode.window.showErrorMessage(`❌ 錯誤: ${e}`);
+        }
     }
 }

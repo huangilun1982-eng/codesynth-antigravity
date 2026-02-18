@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import axios from 'axios';
 import { getCockpitHTML } from './html_templates';
+import { API, SERVER_URL } from '../config';
 
 export class CockpitPanel {
     public static currentPanel: CockpitPanel | undefined;
@@ -83,7 +84,7 @@ export class CockpitPanel {
     private async _update() {
         try {
             console.log(`[CodeSynth] Refreshing cockpit...`);
-            const res = await axios.post('http://127.0.0.1:8000/api/dashboard', {
+            const res = await axios.post(API.DASHBOARD, {
                 project_path: this._projectPath
             });
             this._panel.webview.html = getCockpitHTML(res.data.files, this._projectPath);
@@ -148,7 +149,20 @@ export class CockpitPanel {
                 await this.getStageItems(message.stage_id);
                 break;
             case 'open_preview':
-                await vscode.commands.executeCommand('simpleBrowser.show', 'http://127.0.0.1:8000/preview/index.html');
+                try {
+                    // PREVIEW-05: 安全預覽挂載流程
+                    // 1. 請求後端建立預覽 Session
+                    const pRes = await axios.post(API.PREVIEW_INIT, {
+                        project_path: this._projectPath
+                    });
+                    const sessionId = pRes.data.session_id;
+
+                    // 2. 開啟對應 Session 的 index.html
+                    const previewUrl = `${API.PREVIEW_BASE}/${sessionId}/index.html`;
+                    await vscode.commands.executeCommand('simpleBrowser.show', previewUrl);
+                } catch (e) {
+                    vscode.window.showErrorMessage(`無法啟動預覽: ${e}`);
+                }
                 break;
             case 'get_skills':
                 await this.getSkills();
@@ -161,7 +175,7 @@ export class CockpitPanel {
 
     private async sendAIContext() {
         try {
-            const res = await axios.post('http://127.0.0.1:8000/api/ai/context', {
+            const res = await axios.post(API.AI_CONTEXT, {
                 project_path: this._projectPath,
                 limit: 50
             });
@@ -177,7 +191,7 @@ export class CockpitPanel {
 
     private async sendMemoryStatus() {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/ai/memory');
+            const res = await axios.get(API.AI_MEMORY);
             this._panel.webview.postMessage({
                 command: 'update_memory_status',
                 memory: res.data
@@ -191,7 +205,7 @@ export class CockpitPanel {
     private async triggerCondenseMemory() {
         try {
             vscode.window.showInformationMessage('正在整理記憶...');
-            await axios.post('http://127.0.0.1:8000/api/ai/condense_memory');
+            await axios.post(API.AI_CONDENSE);
             vscode.window.showInformationMessage('記憶整理完成！');
             await this.sendMemoryStatus(); // Refresh UI
         } catch (e) {
@@ -207,7 +221,7 @@ export class CockpitPanel {
 
     private async checkScreenshots(filePath: string, versionId: number) {
         try {
-            const res = await axios.post('http://127.0.0.1:8000/api/screenshots', {
+            const res = await axios.post(API.SCREENSHOTS, {
                 project_path: this._projectPath,
                 version_id: versionId
             });
@@ -233,7 +247,7 @@ export class CockpitPanel {
 
     private async restoreFile(filePath: string, versionId: number) {
         try {
-            const verRes = await axios.post('http://127.0.0.1:8000/api/get_version_content', {
+            const verRes = await axios.post(API.GET_VERSION, {
                 project_path: this._projectPath,
                 id: versionId
             });
@@ -270,7 +284,7 @@ export class CockpitPanel {
     }
 
     private async updateStatus(versionId: number, status: string) {
-        await axios.post('http://127.0.0.1:8000/api/update_status', {
+        await axios.post(API.UPDATE_STATUS, {
             project_path: this._projectPath,
             id: versionId,
             status: status
@@ -279,7 +293,7 @@ export class CockpitPanel {
     }
 
     private async updateTag(versionId: number, featureTag: string) {
-        await axios.post('http://127.0.0.1:8000/api/update_tag', {
+        await axios.post(API.UPDATE_TAG, {
             project_path: this._projectPath,
             version_id: versionId,
             feature_tag: featureTag
@@ -300,7 +314,7 @@ export class CockpitPanel {
                 return;
             }
 
-            const res = await axios.post('http://127.0.0.1:8000/api/stage/create', {
+            const res = await axios.post(API.STAGE_CREATE, {
                 project_path: this._projectPath,
                 name: name,
                 description: description,
@@ -320,7 +334,7 @@ export class CockpitPanel {
 
     private async getStages() {
         try {
-            const res = await axios.post('http://127.0.0.1:8000/api/stage/list', {
+            const res = await axios.post(API.STAGE_LIST, {
                 project_path: this._projectPath
             });
             this._panel.webview.postMessage({
@@ -334,7 +348,7 @@ export class CockpitPanel {
 
     private async getStageItems(stageId: number) {
         try {
-            const res = await axios.post('http://127.0.0.1:8000/api/stage/items', {
+            const res = await axios.post(API.STAGE_ITEMS, {
                 project_path: this._projectPath,
                 stage_id: stageId
             });
@@ -349,7 +363,7 @@ export class CockpitPanel {
 
     private async getSkills() {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/skill/list');
+            const res = await axios.get(API.SKILL_LIST);
             this._panel.webview.postMessage({
                 command: 'update_skills',
                 skills: res.data.skills
@@ -361,7 +375,7 @@ export class CockpitPanel {
 
     private async installSkill(skillId: string, params: any) {
         try {
-            const res = await axios.post('http://127.0.0.1:8000/api/skill/install', {
+            const res = await axios.post(API.SKILL_INSTALL, {
                 project_path: this._projectPath,
                 skill_id: skillId,
                 params: params

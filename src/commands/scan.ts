@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import axios from 'axios';
 import { CockpitPanel } from '../ui/cockpit_panel';
+import { API } from '../config';
 
 export async function scanProjectCmd(context: vscode.ExtensionContext) {
     const projectPath = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : "";
@@ -48,7 +49,7 @@ export async function scanProjectCmd(context: vscode.ExtensionContext) {
                 const validSnapshots = snapshots.filter(s => s !== null);
 
                 if (validSnapshots.length > 0) {
-                    const result = await axios.post('http://127.0.0.1:8000/api/batch_snapshot', {
+                    const result = await axios.post(API.BATCH_SNAPSHOT, {
                         project_path: projectPath,
                         snapshots: validSnapshots
                     });

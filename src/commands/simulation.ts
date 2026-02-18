@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import axios from 'axios';
 import { CockpitPanel } from '../ui/cockpit_panel';
+import { API } from '../config';
 
 export async function startSimulationCmd(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage("CodeSynth: 正在啟動測試指令...");
@@ -25,7 +26,7 @@ export async function startSimulationCmd(context: vscode.ExtensionContext) {
 
     try {
         // 先取得 dashboard 資料以獲取當前檔案清單
-        const dashRes = await axios.post('http://127.0.0.1:8000/api/dashboard', { project_path: projectPath });
+        const dashRes = await axios.post(API.DASHBOARD, { project_path: projectPath });
         const filesData = dashRes.data.files;
         const versionSelection = CockpitPanel.currentPanel.versionSelection;
 
@@ -79,7 +80,7 @@ export async function startSimulationCmd(context: vscode.ExtensionContext) {
 
         vscode.window.setStatusBarMessage("CodeSynth: 正在執行測試...", 3000);
 
-        const res = await axios.post('http://127.0.0.1:8000/api/simulation/start', {
+        const res = await axios.post(API.SIMULATION, {
             project_path: projectPath,
             selection: selection
         });

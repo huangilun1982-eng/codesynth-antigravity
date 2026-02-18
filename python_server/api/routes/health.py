@@ -1,13 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from datetime import datetime
 
 router = APIRouter()
 
 @router.get("/health_check")
-async def health_check():
+async def health_check(request: Request):
+    version = getattr(request.app.state, 'app_version', 'unknown')
     return {
         "status": "healthy",
-        "version": "1.0.0",
+        "version": version,
         "schema_version": 2,
         "timestamp": datetime.now().isoformat(),
         "features": {

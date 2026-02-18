@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import axios from 'axios';
 import * as path from 'path';
 import * as fs from 'fs';
+import { API } from '../config';
 
 export async function exportCodeCmd(context: vscode.ExtensionContext) {
     const projectPath = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : "";
@@ -14,7 +15,7 @@ export async function exportCodeCmd(context: vscode.ExtensionContext) {
 
     try {
         // 取得專案資料
-        const dashRes = await axios.post('http://127.0.0.1:8000/api/dashboard', { project_path: projectPath });
+        const dashRes = await axios.post(API.DASHBOARD, { project_path: projectPath });
         const filesData = dashRes.data.files;
 
         // 建立導出目錄
@@ -27,16 +28,31 @@ export async function exportCodeCmd(context: vscode.ExtensionContext) {
         let exportedFiles = 0;
         for (const [filePath, versions] of Object.entries(filesData as any)) {
             if (versions && Array.isArray(versions) && versions.length > 0) {
+                // QUA-06: 路徑遍歷防護
+                const normalized = path.normalize(filePath);
+                if (normalized.startsWith('..') || path.isAbsolute(normalized)) {
+                    console.warn(`[CodeSynth] 跳過不安全路徑: ${filePath}`);
+                    continue;
+                }
+
                 const latestVersion = versions[0] as any; // 最新版本
 
                 // 取得內容
-                const contentRes = await axios.post('http://127.0.0.1:8000/api/get_version_content', {
+                const contentRes = await axios.post(API.GET_VERSION, {
                     project_path: projectPath,
                     id: latestVersion.id
                 });
 
                 // 寫入檔案
-                const exportPath = path.join(exportDir, filePath);
+                const exportPath = path.join(exportDir, normalized);
+
+                // 再次確認解析後的路徑仍在 exportDir 內
+                const resolvedExport = path.resolve(exportPath);
+                if (!resolvedExport.startsWith(path.resolve(exportDir))) {
+                    console.warn(`[CodeSynth] 路徑逃逸偵測: ${filePath}`);
+                    continue;
+                }
+
                 const exportFileDir = path.dirname(exportPath);
 
                 // 建立子目錄

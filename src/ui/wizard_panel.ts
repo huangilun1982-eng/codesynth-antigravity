@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import axios from 'axios';
 import { getWizardHTML } from './html_templates';
+import { API } from '../config';
 
 export class WizardPanel {
     public static currentPanel: WizardPanel | undefined;
@@ -82,7 +83,7 @@ export class WizardPanel {
 
     private async getSkills() {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/skill/list');
+            const res = await axios.get(API.SKILL_LIST);
             this._panel.webview.postMessage({
                 command: 'update_skills',
                 skills: res.data.skills
@@ -95,7 +96,7 @@ export class WizardPanel {
     private async createProject(data: any) {
         try {
             // Call Python API
-            const res = await axios.post('http://127.0.0.1:8000/api/wizard/create', {
+            const res = await axios.post(API.WIZARD_CREATE, {
                 name: data.name,
                 path: data.path,
                 template_id: data.template,

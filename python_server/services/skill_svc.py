@@ -34,8 +34,10 @@ class SkillService:
         
         return skills
 
-    def install_skill(self, skill_id: str, project_path: str, params: Dict[str, Any] = {}) -> Dict[str, Any]:
+    def install_skill(self, skill_id: str, project_path: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Installs a skill into the target project."""
+        if params is None:
+            params = {}
         skill_path = os.path.join(self.skills_dir, skill_id)
         manifest_path = os.path.join(skill_path, "skill.json")
 

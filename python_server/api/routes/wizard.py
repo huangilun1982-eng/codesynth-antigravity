@@ -1,7 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-import os
 from services.project_svc import ProjectService
 
 router = APIRouter()
@@ -13,24 +12,16 @@ class CreateProjectRequest(BaseModel):
     skills: List[str] = []
 
 @router.get("/templates")
-async def list_templates():
+async def list_templates(request: Request):
     """List available project templates."""
-    server_root = os.getcwd()
-    if os.path.basename(server_root) != "python_server":
-       server_root = os.path.join(server_root, "python_server")
-       
-    svc = ProjectService(server_root)
+    svc = ProjectService(request.app.state.server_root)
     return {"status": "success", "templates": svc.list_templates()}
 
 @router.post("/create")
-async def create_project(req: CreateProjectRequest):
+async def create_project(req: CreateProjectRequest, request: Request):
     """Create a new project."""
     try:
-        server_root = os.getcwd()
-        if os.path.basename(server_root) != "python_server":
-           server_root = os.path.join(server_root, "python_server")
-           
-        svc = ProjectService(server_root)
+        svc = ProjectService(request.app.state.server_root)
         result = svc.create_project(req.name, req.path, req.template_id, req.skills)
         
         if result.get("status") == "error":

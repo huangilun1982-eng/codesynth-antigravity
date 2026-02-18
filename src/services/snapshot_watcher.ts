@@ -2,6 +2,11 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import axios from 'axios';
 import { CockpitPanel } from '../ui/cockpit_panel';
+import { API } from '../config';
+
+// REL-05: Debounce 機制，避免快速連續存檔造成大量重複請求
+const DEBOUNCE_MS = 400;
+const _pendingSnapshots = new Map<string, NodeJS.Timeout>();
 
 export function startSnapshotWatcher(context: vscode.ExtensionContext) {
     const watcher = vscode.workspace.onDidSaveTextDocument(async (document) => {
@@ -31,27 +36,38 @@ export function startSnapshotWatcher(context: vscode.ExtensionContext) {
         if (relativePath.includes('.git')) { return; }
         if (relativePath.includes('node_modules')) { return; }
 
-        try {
-            console.log(`[CodeSynth] 開始備份: ${relativePath}`);
-
-            await axios.post('http://127.0.0.1:8000/api/snapshot', {
-                project_path: projectPath,
-                file_path: relativePath,
-                content: document.getText(),
-                trigger: 'Auto-Save'
-            });
-
-            console.log(`[CodeSynth] 備份成功: ${relativePath}`);
-            vscode.window.setStatusBarMessage(`✅ CodeSynth: 已備份 ${relativePath}`, 3000);
-
-            // 自動刷新控制台（如果已開啟）
-            if (CockpitPanel.currentPanel) {
-                await CockpitPanel.currentPanel.refresh();
-            }
-        } catch (error) {
-            console.error(`[CodeSynth] 保存失敗:`, error);
-            vscode.window.setStatusBarMessage(`❌ CodeSynth: 備份失敗 ${relativePath}`, 3000);
+        // Debounce: 取消先前同一檔案的待發送請求
+        const existingTimer = _pendingSnapshots.get(relativePath);
+        if (existingTimer) {
+            clearTimeout(existingTimer);
         }
+
+        const timer = setTimeout(async () => {
+            _pendingSnapshots.delete(relativePath);
+            try {
+                console.log(`[CodeSynth] 開始備份: ${relativePath}`);
+
+                await axios.post(API.SNAPSHOT, {
+                    project_path: projectPath,
+                    file_path: relativePath,
+                    content: document.getText(),
+                    trigger: 'Auto-Save'
+                });
+
+                console.log(`[CodeSynth] 備份成功: ${relativePath}`);
+                vscode.window.setStatusBarMessage(`✅ CodeSynth: 已備份 ${relativePath}`, 3000);
+
+                // 自動刷新控制台（如果已開啟）
+                if (CockpitPanel.currentPanel) {
+                    await CockpitPanel.currentPanel.refresh();
+                }
+            } catch (error) {
+                console.error(`[CodeSynth] 保存失敗:`, error);
+                vscode.window.setStatusBarMessage(`❌ CodeSynth: 備份失敗 ${relativePath}`, 3000);
+            }
+        }, DEBOUNCE_MS);
+
+        _pendingSnapshots.set(relativePath, timer);
     });
 
     context.subscriptions.push(watcher);

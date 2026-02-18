@@ -1,9 +1,11 @@
 import os
 import shutil
 import sys
+import platform
 import subprocess
 from database.connection import get_db
 from utils.screenshot import take_screenshot
+from utils.logger import server_logger as logger
 from .ai_svc import log_ai_event
 
 def start_simulation_logic(data: dict) -> dict:
@@ -24,15 +26,17 @@ def start_simulation_logic(data: dict) -> dict:
         if not project_path:
             return {"status": "error", "message": "未提供專案路徑", "output": ""}
             
-        # 0. 清理舊的 Streamlit 行程 (避免 Port 佔用)
+        # 0. 清理舊的 Streamlit 行程 (避免 Port 佔用) — 跨平台
         try:
-            # Use specific path validation or cleaner invocation if possible
-            # But simple try-except usually suppresses errors. 
-            # If this is causing 500, the exception must be very severe or syntax-related (checked).
-            print("   [...] Killing old streamlit processes...")
-            subprocess.run(["taskkill", "/f", "/im", "streamlit.exe"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            logger.info("Killing old streamlit processes...")
+            if platform.system() == 'Windows':
+                subprocess.run(["taskkill", "/f", "/im", "streamlit.exe"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:
+                subprocess.run(["pkill", "-f", "streamlit"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
-            print(f"   [!] Cleanup failed: {e}")
+            logger.warning(f"Streamlit cleanup failed: {e}")
         
         # 1. 建立臨時執行目錄
         sim_dir = os.path.join(project_path, "_sim_temp")
@@ -40,7 +44,7 @@ def start_simulation_logic(data: dict) -> dict:
             try:
                 shutil.rmtree(sim_dir)
             except Exception as e:
-                print(f"[!] 清理舊目錄失敗: {e}")
+                logger.warning(f"清理舊目錄失敗: {e}")
         
         try:
             os.makedirs(sim_dir, exist_ok=True)
@@ -82,7 +86,7 @@ def start_simulation_logic(data: dict) -> dict:
                 with open(target_file_path, 'w', encoding='utf-8') as f:
                     f.write(code)
                 files_written.append(relative_path)
-                print(f"   [+] 寫入: {relative_path}")
+                logger.info(f"寫入: {relative_path}")
             except Exception as e:
                 conn.close()
                 return {"status": "error", "message": f"寫入檔案失敗: {e}", "output": ""}
@@ -109,7 +113,7 @@ def start_simulation_logic(data: dict) -> dict:
                 }
         
         # 4. 執行程式
-        print(f"   [>] 執行: {os.path.basename(main_file)}")
+        logger.info(f"執行: {os.path.basename(main_file)}")
         
         # 取得 main.py 或進入點的 version_id，用於截圖
         main_file_rel_path = os.path.relpath(main_file, sim_dir)
@@ -132,8 +136,8 @@ def start_simulation_logic(data: dict) -> dict:
                 content = f.read()
                 if 'import streamlit' in content:
                     is_streamlit = True
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"讀取主程式偵測 Streamlit 失敗: {e}")
 
         # [Check for Desktop Launcher]
         launcher_name = "Desktop_Launcher.py"
@@ -145,9 +149,9 @@ def start_simulation_logic(data: dict) -> dict:
             if os.path.exists(orig_launcher):
                 try:
                     shutil.copy(orig_launcher, launcher_path)
-                    print(f"   [+] Auto-included {launcher_name}")
-                except:
-                    pass
+                    logger.info(f"Auto-included {launcher_name}")
+                except Exception as e:
+                    logger.warning(f"複製 {launcher_name} 失敗: {e}")
 
         try:
             # 決定執行模式

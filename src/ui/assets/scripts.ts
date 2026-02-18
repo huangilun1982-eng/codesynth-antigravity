@@ -1,6 +1,17 @@
 export const COCKPIT_SCRIPT = `
     const vscode = acquireVsCodeApi();
 
+    // QUA-02: XSS 防護 — 所有動態內容插入 DOM 前先跳脫
+    function escapeHtml(str) {
+        if (typeof str !== 'string') return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function switchTab(tabName) {
         document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));

@@ -3,10 +3,11 @@ import { spawn, execFile, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import axios from 'axios';
+import { SERVER_URL } from '../config';
 
 export class ServerManager {
     private static _serverProcess: ChildProcess | null = null;
-    private static _serverUrl = 'http://127.0.0.1:8000';
+    private static _serverUrl = SERVER_URL;
     private static _outputChannel: vscode.OutputChannel | null = null;
 
     public static async start(context: vscode.ExtensionContext) {
@@ -175,17 +176,18 @@ export class ServerManager {
         }
     }
     private static async resolvePythonPath(): Promise<string> {
-        const candidates = [
-            'C:\\Users\\windf\\AppData\\Local\\Programs\\Python\\Python311\\python.exe', // Confirmed absolute path first
-            'py',
-            'python',
-            'python3',
-            'C:\\Windows\\py.exe'
-        ];
+        // 優先使用 VS Code Python 擴充的設定
+        const pythonConfig = vscode.workspace.getConfiguration('python');
+        const configuredPath = pythonConfig.get<string>('defaultInterpreterPath');
+
+        const candidates: string[] = [];
+        if (configuredPath && configuredPath !== 'python') {
+            candidates.push(configuredPath);
+        }
+        candidates.push('py', 'python', 'python3');
 
         for (const cmd of candidates) {
             try {
-                // Quick spawn check
                 await new Promise<void>((resolve, reject) => {
                     const check = spawn(cmd, ['--version'], { env: process.env });
                     check.on('error', reject);
@@ -197,9 +199,9 @@ export class ServerManager {
                         }
                     });
                 });
-                return cmd; // Found working command
+                return cmd;
             } catch (e) {
-                // console.log(`[CodeSynth] Candidate ${cmd} failed: ${e}`);
+                // 此候選不可用，嘗試下一個
             }
         }
         return 'python'; // Fallback
